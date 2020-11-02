@@ -14,13 +14,13 @@ FROM
         where ad.date = '2019-04-03' and ad.event = 'view'
             group by ad_id) as april_03
 
-FULL OUTER JOIN
+RIGHT OUTER JOIN
     (select ad.ad_id, count(ad_id) as views_per_ad_04 from ads_data as ad
         where ad.date = '2019-04-04' and ad.event = 'view'
             group by ad_id) as april_04
 ON april_03.ad_id = april_04.ad_id
 
-FULL OUTER JOIN
+RIGHT OUTER JOIN
     (select ad.ad_id, count(ad_id) as views_per_ad_05 from ads_data as ad
         where ad.date = '2019-04-05' and ad.event = 'view'
             group by ad_id) as april_05
@@ -45,18 +45,18 @@ FROM
         where ad.date = '2019-04-03' and ad.event = 'click'
             group by ad_id) as april_03
 
-FULL OUTER JOIN
+RIGHT OUTER JOIN
     (select ad.ad_id, count(ad_id) as views_per_ad_04 from ads_data as ad
         where ad.date = '2019-04-04' and ad.event = 'click'
             group by ad_id) as april_04
 ON april_03.ad_id = april_04.ad_id
 
-FULL OUTER JOIN
+RIGHT OUTER JOIN
     (select ad.ad_id, count(ad_id) as views_per_ad_05 from ads_data as ad
         where ad.date = '2019-04-05' and ad.event = 'click'
             group by ad_id) as april_05
 ON april_03.ad_id = april_05.ad_id
-    ORDER BY total_views_per_04_April DESC
+    ORDER BY total_views_per_05_April DESC
         LIMIT 100;
 
 
