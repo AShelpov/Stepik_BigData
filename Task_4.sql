@@ -2,87 +2,77 @@
   Сколько таких объявлений, есть ли какие-то закономерности? Эта проблема наблюдается на всех платформах?*/
 
 
-SELECT tv.ad_id, tv.total_views, tc.total_clicks
+select ad.ad_id,
+       ad.has_video,
+       length(groupArrayIf((ad.ad_id), ad.event = 'view')) as total_views,
+       length(groupArrayIf((ad.ad_id), ad.event = 'click')) as total_clicks
+from ads_data as ad
+    group by ad.ad_id, ad.has_video
+        having total_views = 0 and total_clicks > 0
+            limit 100;
+
+/*Всего объявлений без показов но с кликами 9 штук. Закономерностей пока не вижу у всех объявлений видео нет, надо посмотреть в разрезе
+  платрформ*/
+
+SELECT (select 'ios') as platform,
+       count(ios.ad_id) as num_of_ads,
+       sum(ios.total_views) as sum_of_views,
+       sum(ios.total_clicks) as sum_of_clicks
 FROM
-    (select ad.ad_id, count(ad.event) as total_views from ads_data as ad
-        where ad.event = 'view'
-            group by ad.ad_id) as tv
-
-FULL OUTER JOIN
-    (select ad.ad_id, count(ad.event) as total_clicks from ads_data as ad
-        where ad.event = 'click'
-            group by ad.ad_id) as tc
-ON tv.ad_id = tc.ad_id
-    WHERE tv.total_views = 0 and tc.total_clicks > 0
-        ORDER BY tc.total_clicks DESC;
-
-/*Всего объявлений без показов но с кликами 9 штук. Закономерностей пока не вижу, надо посмотреть в разрезе
-  платрформ и дат*/
-
-
-
-SELECT DISTINCT count(tc.ad_id) as total_ads, (select 'ios') as paltform
-FROM
-    (select ad.ad_id, count(ad.event) as total_views from ads_data as ad
-        where ad.event = 'view' and ad.platform = 'ios'
-                group by ad.ad_id) as tv
-
-FULL OUTER JOIN
-    (select ad.ad_id, count(ad.event) as total_clicks from ads_data as ad
-        where ad.event = 'click' and ad.platform = 'ios'
-                group by ad.ad_id) as tc
-ON tv.ad_id = tc.ad_id
-    WHERE tv.total_views = 0 and tc.total_clicks > 0
+    (select ad.ad_id,
+            length(groupArrayIf((ad.ad_id), ad.event = 'view' and ad.platform = 'ios')) as total_views,
+            length(groupArrayIf((ad.ad_id), ad.event = 'click' and ad.platform = 'ios')) as total_clicks
+    from ads_data as ad
+        group by ad.ad_id, ad.has_video
+            having total_views = 0 and total_clicks > 0) as ios
 
 UNION ALL
 
-SELECT DISTINCT count(tc.ad_id) as total_ads, (select 'android') as paltform
+SELECT (select 'android') as platform,
+       count(android.ad_id) as num_of_ads,
+       sum(android.total_views) as sum_of_views,
+       sum(android.total_clicks) as sum_of_clicks
 FROM
-    (select ad.ad_id, count(ad.event) as total_views from ads_data as ad
-        where ad.event = 'view' and ad.platform = 'android'
-                group by ad.ad_id) as tv
-
-FULL OUTER JOIN
-    (select ad.ad_id, count(ad.event) as total_clicks from ads_data as ad
-        where ad.event = 'click' and ad.platform = 'android'
-                group by ad.ad_id) as tc
-ON tv.ad_id = tc.ad_id
-    WHERE tv.total_views = 0 and tc.total_clicks > 0
+    (select ad.ad_id,
+            length(groupArrayIf((ad.ad_id), ad.event = 'view' and ad.platform = 'android')) as total_views,
+            length(groupArrayIf((ad.ad_id), ad.event = 'click' and ad.platform = 'android')) as total_clicks
+    from ads_data as ad
+        group by ad.ad_id, ad.has_video
+            having total_views = 0 and total_clicks > 0) as android
 
 UNION ALL
 
-SELECT DISTINCT count(tc.ad_id) as total_ads, (select 'web') as paltform
+SELECT (select 'web')        as platform,
+       count(web.ad_id)      as num_of_ads,
+       sum(web.total_views)  as sum_of_views,
+       sum(web.total_clicks) as sum_of_clicks
 FROM
-    (select ad.ad_id, count(ad.event) as total_views from ads_data as ad
-        where ad.event = 'view' and ad.platform = 'web'
-                group by ad.ad_id) as tv
-
-FULL OUTER JOIN
-    (select ad.ad_id, count(ad.event) as total_clicks from ads_data as ad
-        where ad.event = 'click' and ad.platform = 'web'
-                group by ad.ad_id) as tc
-ON tv.ad_id = tc.ad_id
-    WHERE tv.total_views = 0 and tc.total_clicks > 0;
-
-
+    (select ad.ad_id,
+            length(groupArrayIf((ad.ad_id), ad.event = 'view' and ad.platform = 'web')) as total_views,
+            length(groupArrayIf((ad.ad_id), ad.event = 'click' and ad.platform = 'web')) as total_clicks
+    from ads_data as ad
+        group by ad.ad_id, ad.has_video
+            having total_views = 0 and total_clicks > 0) as web;
 
 
 /*В разрезе платформ особой закономерности нет. надо попробовать посмотреть в разрезе дат*/
-SELECT tc.date, uniqExact(tv.ad_id), sum(tc.total_clicks)
-FROM
-    (select ad.date, ad.ad_id, count(ad.event) as total_views from ads_data as ad
-        where ad.event = 'view'
-            group by ad.date, ad.ad_id) as tv
 
-FULL OUTER JOIN
-    (select ad.date, ad.ad_id, count(ad.event) as total_clicks from ads_data as ad
-        where ad.event = 'click'
-            group by ad.date, ad.ad_id) as tc
-ON tv.ad_id = tc.ad_id
-    WHERE tv.total_views = 0 and tc.total_clicks > 0
-        GROUP BY tc.date;
+SELECT per_date.date,
+       sum(per_date.total_views) as total_views,
+       sum(per_date.total_clicks) as total_clicks
+FROM
+    (select ad.date,
+           length(groupArrayIf((ad.ad_id), ad.event = 'view')) as total_views,
+           length(groupArrayIf((ad.ad_id), ad.event = 'click')) as total_clicks
+    from ads_data as ad
+        group by ad.date, ad.ad_id
+            having total_views = 0 and total_clicks > 0) as per_date
+GROUP BY per_date.date;
+
+/*Эм...пока не знаю как привязать из рецензии подсказку, что нужно смотреть объявления с видео, пока оставлю старый вывод*/
 
 /*Из закономерностей можно выделить что активность таких объявлений была всего в течение двух дней.
   Исходя из выводов, сделанных в прошлых заданиях, о наличии выбросов....где было очевидно что с 3 апреля
   произошли какие-то изменения в рекламном бизнесе, смею предположить что данные
   клики по объявлениям не что иное как тестирование рекламнных ссылок перед запуском их на боевую*/
+

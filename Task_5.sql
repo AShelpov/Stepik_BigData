@@ -2,54 +2,37 @@
   А чему равняется 95 процентиль CTR по всем объявлениям за 2019-04-04?*/
 
 SELECT (select 'no video') as has_video,
-       avg(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-          (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as average,
-       min(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-          (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as min,
-       quantile(0.25)(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-               (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as first_quantile,
-       quantile(0.5)(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-               (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as second_quantile,
-       quantile(0.75)(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-               (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as third_quantile,
-       max(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-          (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as max
+       avg(no_video.CTR_no_video) as average,
+       min(no_video.CTR_no_video) as minimum,
+       quantileExact(0.25)(no_video.CTR_no_video) as first_quartile,
+       quantileExact(0.5)(no_video.CTR_no_video) as second_quartile,
+       quantileExact(0.75)(no_video.CTR_no_video) as third_quartile,
+       max(no_video.CTR_no_video) as maximum
 FROM
-    (select ad.ad_id, count(ad.event) as total_views_no_vid from ads_data as ad
-        where ad.event = 'view' and ad.has_video = 0
-            group by ad.ad_id) as tv_nv
-
-FULL OUTER JOIN
-    (select ad.ad_id, count(ad.event) as total_clicks_no_vid from ads_data as ad
-        where ad.event = 'click' and ad.has_video = 0
-            group by ad.ad_id) tc_nv
-ON tv_nv.ad_id = tc_nv.ad_id
+        (select countIf(event = 'click') as clicks_no_video,
+                countIf(event = 'view')  as views_no_video,
+                if(isFinite(clicks_no_video / views_no_video), clicks_no_video / views_no_video, 0) as CTR_no_video
+        from ads_data
+            where has_video = 0
+                group by ad_id) as no_video
 
 UNION ALL
 
 SELECT (select 'with video') as has_video,
-       avg(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-          (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as average,
-       min(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-          (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as min,
-       quantile(0.25)(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-               (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as first_quantile,
-       quantile(0.5)(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-               (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as second_quantile,
-       quantile(0.75)(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-               (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as third_quantile,
-       max(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-          (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as max
+       avg(with_video.CTR_with_video) as average,
+       min(with_video.CTR_with_video) as minimum,
+       quantileExact(0.25)(with_video.CTR_with_video) as first_quartile,
+       quantileExact(0.5)(with_video.CTR_with_video) as second_quartile,
+       quantileExact(0.75)(with_video.CTR_with_video) as third_quartile,
+       max(with_video.CTR_with_video) as maximum
 FROM
-    (select ad.ad_id, count(ad.event) as total_views_no_vid from ads_data as ad
-        where ad.event = 'view' and ad.has_video = 1
-            group by ad.ad_id) as tv_nv
+        (select countIf(event = 'click') as clicks_with_video,
+                countIf(event = 'view')  as views_with_video,
+                if(isFinite(clicks_with_video / views_with_video), clicks_with_video / views_with_video, 0) as CTR_with_video
+        from ads_data
+            where has_video = 1
+                group by ad_id) as with_video;
 
-FULL OUTER JOIN
-    (select ad.ad_id, count(ad.event) as total_clicks_no_vid from ads_data as ad
-        where ad.event = 'click' and ad.has_video = 1
-            group by ad.ad_id) tc_nv
-ON tv_nv.ad_id = tc_nv.ad_id;
 
 /*Как видно из распределения CTR у объявлений с видеобудет получше чем без видео. Все описательные статистики
   имеют большую величину у объявлений с видео чем без него. т.е. пик распределения смешен правее чем у объявлений без видео.
@@ -62,19 +45,14 @@ ON tv_nv.ad_id = tc_nv.ad_id;
   Получим таблицу сопряженности, которую можно будет проанализировать с помощью критерия хи-квадрат */
 
 
-
-SELECT quantile(0.95)(if(isFinite(tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid),
-               (tc_nv.total_clicks_no_vid / tv_nv.total_views_no_vid), 0)) as quantile_95
+SELECT quantileExact(0.95)(ctr_table.CTR) as quantile_95
 FROM
-    (select ad.ad_id, count(ad.event) as total_views_no_vid from ads_data as ad
-        where ad.event = 'view' and ad.date = '2019-04-04'
-            group by ad.ad_id) as tv_nv
+    (select countIf(event = 'click') as clicks,
+            countIf(event = 'view')  as views,
+            if(isFinite(clicks / views), clicks / views, 0) as CTR
+    from ads_data
+        where ads_data.date = '2019-04-04'
+            group by ad_id) as ctr_table;
 
-FULL OUTER JOIN
-    (select ad.ad_id, count(ad.event) as total_clicks_no_vid from ads_data as ad
-        where ad.event = 'click' and ad.date = '2019-04-04'
 
-            group by ad.ad_id) tc_nv
-ON tv_nv.ad_id = tc_nv.ad_id;
-
-/*95% квантиль CTR по всем объявлениям за 4 апреля 2019 года равняется 0.08209*/
+/*95% квантиль CTR по всем объявлениям за 4 апреля 2019 года равняется 0.08333*/

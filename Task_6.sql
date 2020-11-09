@@ -21,16 +21,27 @@ WHERE  agg.cost_of_ads > 1
   либо есть другой вариант. Поскольку чтоимость у всех объявлений по CPM и CPC одинаковая, сделаем следующее
   возьмем среднее значение по столбцу ad_cost и в таком случае нам вернется точная стоимость объявления*/
 
-SELECT agg.date,
-       sum(if(agg.ad_cost_type = 'CPM', agg.views * agg.cost_of_ads / 1000,
-              agg.clicks * agg.cost_of_ads)) as total_revenue
-    FROM
-        (select ad.ad_id, ad.date,ad.ad_cost_type, countIf(ad.ad_cost_type = 'CPM') as views,
-                countIf(ad.ad_cost_type = 'CPC') as clicks,
-                avg(ad.ad_cost) as cost_of_ads
-        from ads_data as ad
-            group by ad.ad_id, ad.date, ad.ad_cost_type) as agg
-GROUP BY agg.date
+
+SELECT agg_table.date,
+       sum(agg_table.revenue_per_views) as views_revenue,
+       sum(agg_table.revenue_per_clicks) as clicks_revenue,
+       views_revenue + clicks_revenue as total_revenue
+FROM
+    (select ad.ad_id,
+            ad.date,
+            countIf(ad.event = 'view' and ad.ad_cost_type = 'CPM') as views,
+            avgIf(ad.ad_cost, ad.event = 'view' and ad.ad_cost_type = 'CPM') as cost_of_views,
+            if(isNaN(views * cost_of_views), 0, views * cost_of_views / 1000) as revenue_per_views,
+
+            countIf(ad.event = 'click' and ad.ad_cost_type = 'CPC') as clicks,
+            avgIf(ad.ad_cost, ad.event = 'click' and ad.ad_cost_type = 'CPC') as cost_of_clicks,
+            if(isNaN(clicks * cost_of_clicks), 0, clicks * cost_of_clicks) as revenue_per_clicks
+    from ads_data as ad
+            group by ad.date, ad.ad_id) as agg_table
+
+GROUP BY agg_table.date
     ORDER BY total_revenue DESC;
 
-/*Больше всего заработали за 4 апреля - 575 т.р., меньше всего за 6 апреля - 72 т.р. если стоимость в деревянных))*/
+
+
+/*Больше всего заработали за 5 апреля - 96 т.р., меньше всего за 1 апреля - 6,5 т.р. если стоимость в деревянных))*/
