@@ -14,7 +14,7 @@ def process(spark, input_file, target_path):
     output_df = count_ctr(df, output_df, spark)
     train_df, test_df, validate_df = output_df.randomSplit([0.5, 0.25, 0.25], 42)
 
-    target_path = os.path.join(target_path, "result")
+    target_path = os.path.join(os.getcwd(), target_path)
     os.mkdir(target_path)
 
     path_train = os.path.join(target_path, "train")
