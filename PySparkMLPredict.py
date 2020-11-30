@@ -12,8 +12,11 @@ def process(spark, input_file, output_file):
     model = PipelineModel.load(MODEL_PATH)
     input_df = spark.read.options(header=True, inferschema="true").parquet(input_file)
     predictions = model.transform(input_df)
-    
-
+    predictions = predictions.select("ad_id", "prediction")
+    predictions.write.mode('overwrite').parquet(output_file)
+    print("="*100)
+    predictions.show(5)
+    print("="*100)
 
 
 def main(argv):
