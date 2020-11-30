@@ -79,7 +79,7 @@ def prepare_initial_df(data_frame, spark):
 
     #  aggregate DataFrame to find day_count feature and join with output_df
     uniq_date = data_frame.groupBy("ad_id").agg(F.countDistinct("date").alias("day_count"))
-    uniq_date = uniq_date.withColumn("day_count", f.col("day_count").cast(IntegerType()))
+    uniq_date = uniq_date.withColumn("day_count", col("day_count").cast(IntegerType()))
     output_df = output_df.join(uniq_date, on="ad_id", how="left")
 
     return output_df
